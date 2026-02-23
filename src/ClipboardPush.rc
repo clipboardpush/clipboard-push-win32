@@ -88,7 +88,8 @@ BEGIN
     PUSHBUTTON      "Reconnect", IDC_SETTINGS_RECONNECT, 270, 242, 65, 14
     PUSHBUTTON      "Reset Credentials", IDC_SETTINGS_RESET, 340, 242, 73, 14
     
-    LTEXT           "Version ...", IDC_SETTINGS_VERSION, 200, 265, 215, 8, SS_RIGHT | WS_DISABLED
+    LTEXT           "Version ...", IDC_SETTINGS_VERSION, 200, 265, 140, 8, SS_RIGHT | WS_DISABLED
+    PUSHBUTTON      "Update Available!", IDC_SETTINGS_UPDATE_BTN, 345, 262, 70, 14, NOT WS_VISIBLE
 END
 
 // Version Information

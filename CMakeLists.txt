@@ -50,14 +50,6 @@ add_executable(ClipboardPushWin32 WIN32
     ${RESOURCES}
 )
 
-# Increment build number before compilation
-add_custom_target(UpdateBuildNumber
-    COMMAND powershell -ExecutionPolicy Bypass -File "${CMAKE_SOURCE_DIR}/scripts/update_build.ps1" -FilePath "${CMAKE_SOURCE_DIR}/src/core/Version.h"
-    COMMENT "Incrementing Build Number"
-    VERBATIM
-)
-add_dependencies(ClipboardPushWin32 UpdateBuildNumber)
-
 target_link_libraries(ClipboardPushWin32 PRIVATE
     nlohmann_json::nlohmann_json
     unofficial::nayuki-qr-code-generator::nayuki-qr-code-generator

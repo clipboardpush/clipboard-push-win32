@@ -101,6 +101,23 @@ void SettingsWindow::Show(bool show) {
     if (show) SetForegroundWindow(m_hWnd);
 }
 
+void SettingsWindow::SetUpdateAvailable(const std::string& version, const std::string& url) {
+    m_updateUrl = url;
+    m_newVersion = version;
+
+    if (m_hWnd) {
+        // Show Update Button and set text
+        HWND hBtn = GetDlgItem(m_hWnd, IDC_SETTINGS_UPDATE_BTN);
+        ShowWindow(hBtn, SW_SHOW);
+        std::wstring btnText = L"Update " + Utils::ToWide(version);
+        SetWindowTextW(hBtn, btnText.c_str());
+        
+        // Highlight version label
+        std::string ver = "New: " + version;
+        SetDlgItemTextW(m_hWnd, IDC_SETTINGS_VERSION, Utils::ToWide(ver).c_str());
+    }
+}
+
 void SettingsWindow::LoadSettings() {
     auto& data = Config::Instance().Data();
     SetDlgItemTextW(m_hWnd, IDC_SETTINGS_PATH, Utils::ToWide(data.download_path).c_str());
@@ -118,8 +135,19 @@ void SettingsWindow::LoadSettings() {
     CheckDlgButton(m_hWnd, IDC_SETTINGS_NOTIFICATIONS, data.show_notifications ? BST_CHECKED : BST_UNCHECKED);
 
     // Set Version Text
-    std::string ver = "Version " APP_VERSION_STRING " Stable";
-    SetDlgItemTextW(m_hWnd, IDC_SETTINGS_VERSION, Utils::ToWide(ver).c_str());
+    if (m_newVersion.empty()) {
+        std::string ver = "Version " APP_VERSION_STRING " Stable";
+        SetDlgItemTextW(m_hWnd, IDC_SETTINGS_VERSION, Utils::ToWide(ver).c_str());
+        ShowWindow(GetDlgItem(m_hWnd, IDC_SETTINGS_UPDATE_BTN), SW_HIDE);
+    } else {
+        std::string ver = "New: " + m_newVersion;
+        SetDlgItemTextW(m_hWnd, IDC_SETTINGS_VERSION, Utils::ToWide(ver).c_str());
+        
+        HWND hBtn = GetDlgItem(m_hWnd, IDC_SETTINGS_UPDATE_BTN);
+        std::wstring btnText = L"Update " + Utils::ToWide(m_newVersion);
+        SetWindowTextW(hBtn, btnText.c_str());
+        ShowWindow(hBtn, SW_SHOW);
+    }
 
     // Update QR - using the requested JSON format
     nlohmann::json j;
@@ -231,6 +259,11 @@ INT_PTR CALLBACK SettingsWindow::DialogProc(HWND hDlg, UINT message, WPARAM wPar
                 pThis->LoadSettings(); // Refresh UI and QR
                 // Force reconnect with new credentials
                 SendMessageW(pThis->m_hParent, WM_COMMAND, IDC_SETTINGS_SAVE, 0);
+            }
+            return (INT_PTR)TRUE;
+        case IDC_SETTINGS_UPDATE_BTN:
+            if (pThis && !pThis->m_updateUrl.empty()) {
+                Utils::OpenUrl(pThis->m_updateUrl);
             }
             return (INT_PTR)TRUE;
         case IDC_SETTINGS_BROWSE: {

@@ -18,6 +18,7 @@
 
 #include "core/Crypto.h"
 #include "core/Network.h"
+#include "core/Version.h"
 #include <chrono>
 #include <iomanip>
 #include <sstream>
@@ -54,6 +55,114 @@ struct PendingPush {
 
 static std::mutex g_pendingMutex;
 static std::map<std::string, std::shared_ptr<PendingPush>> g_pendingPushes;
+
+// --- Auto Update Logic ---
+void PerformAutoUpdate(const std::string& downloadUrl) {
+    LOG_INFO("Starting auto-update from %s", downloadUrl.c_str());
+    
+    // 1. Download to temp
+    auto data = Network::HttpClient::Get(downloadUrl);
+    if (!data || data->empty()) {
+        LOG_ERROR("Update download failed");
+        return;
+    }
+
+    wchar_t currentPath[MAX_PATH];
+    GetModuleFileNameW(NULL, currentPath, MAX_PATH);
+    
+    std::wstring wCurrentPath(currentPath);
+    std::wstring wOldPath = wCurrentPath + L".old";
+    std::wstring wTempPath = fs::path(Utils::GetAppDir()) / L"temp" / L"update.exe";
+
+    // Ensure temp dir
+    fs::create_directories(fs::path(Utils::GetAppDir()) / L"temp");
+
+    // Write new file
+    std::ofstream ofs(wTempPath, std::ios::binary);
+    if (!ofs.is_open()) {
+        LOG_ERROR("Failed to write update file");
+        return;
+    }
+    ofs.write((char*)data->data(), data->size());
+    ofs.close();
+
+    // 2. Notify User
+    ShowNotification(L"Updating...", L"Installing new version and restarting...", UI::NotificationStyle::Inbound);
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+
+    // 3. Rename current EXE (Windows allows renaming running executables)
+    // First delete any existing .old just in case
+    DeleteFileW(wOldPath.c_str());
+    
+    if (!MoveFileW(wCurrentPath.c_str(), wOldPath.c_str())) {
+        LOG_ERROR("Failed to rename current exe: %d", GetLastError());
+        return;
+    }
+
+    // 4. Move new EXE to current location
+    if (!MoveFileW(wTempPath.c_str(), wCurrentPath.c_str())) {
+        LOG_ERROR("Failed to place new exe: %d. Rolling back...", GetLastError());
+        // Rollback
+        MoveFileW(wOldPath.c_str(), wCurrentPath.c_str());
+        return;
+    }
+
+    // 5. Restart
+    ShellExecuteW(NULL, L"open", wCurrentPath.c_str(), NULL, NULL, SW_SHOWNORMAL);
+    
+    // 6. Die
+    ExitProcess(0);
+}
+
+void CheckForUpdates() {
+    std::thread([]() {
+        // Delay check to not interfere with startup
+        std::this_thread::sleep_for(std::chrono::seconds(8));
+        
+        LOG_INFO("Checking for updates...");
+        // Use a stable JSON endpoint on the website
+        std::string url = "https://clipboardpush.com/downloads/version-win32.json";
+        auto res = Network::HttpClient::Get(url);
+        if (!res) {
+            LOG_WARNING("Update check failed: Network error");
+            return;
+        }
+
+        try {
+            std::string body(res->begin(), res->end());
+            auto j = nlohmann::json::parse(body);
+            
+            int remoteMajor = j.value("version_major", 0);
+            int remoteMinor = j.value("version_minor", 0);
+            int remotePatch = j.value("version_patch", 0);
+            int remoteBuild = j.value("build", 0);
+            std::string remoteVerStr = j.value("version_string", "Unknown");
+            std::string changelog = j.value("changelog", "Bug fixes and performance improvements.");
+            std::string downloadUrl = j.value("download_url", "https://clipboardpush.com/");
+
+            bool hasUpdate = false;
+            if (remoteMajor > APP_VERSION_MAJOR) hasUpdate = true;
+            else if (remoteMajor == APP_VERSION_MAJOR) {
+                if (remoteMinor > APP_VERSION_MINOR) hasUpdate = true;
+                else if (remoteMinor == APP_VERSION_MINOR) {
+                    if (remotePatch > APP_VERSION_PATCH) hasUpdate = true;
+                    else if (remotePatch == APP_VERSION_PATCH) {
+                        if (remoteBuild > APP_BUILD_NUMBER) hasUpdate = true;
+                    }
+                }
+            }
+
+            if (hasUpdate) {
+                LOG_INFO("New update detected: %s. Starting seamless update...", remoteVerStr.c_str());
+                PerformAutoUpdate(downloadUrl);
+            } else {
+                LOG_INFO("Software is up to date (Build %d)", APP_BUILD_NUMBER);
+            }
+        } catch (...) {
+            LOG_ERROR("Update check failed: JSON parse error");
+        }
+    }).detach();
+}
 
 void ProcessReceivedFile(const std::string& filePath, const std::string& filename, const std::string& type) {
     auto& config = Config::Instance().Data();
@@ -565,6 +674,19 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 }
 
 int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, int nCmdShow) {
+    // 0. Update Cleanup: Delete .old file if it exists
+    wchar_t currentPath[MAX_PATH];
+    GetModuleFileNameW(NULL, currentPath, MAX_PATH);
+    std::wstring wOldPath = std::wstring(currentPath) + L".old";
+    
+    // Try to delete .old file (silently)
+    if (GetFileAttributesW(wOldPath.c_str()) != INVALID_FILE_ATTRIBUTES) {
+        for (int i = 0; i < 5; i++) {
+            if (DeleteFileW(wOldPath.c_str())) break;
+            Sleep(100);
+        }
+    }
+
     // Single Instance Protection
     HANDLE hMutex = CreateMutexW(NULL, TRUE, L"Global\\ClipboardPushWin32_SingleInstance_Mutex");
     if (hMutex == NULL || GetLastError() == ERROR_ALREADY_EXISTS) {
@@ -765,6 +887,9 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
     });
 
     sio.Connect(data.relay_server_url, data.room_id, data.device_id);
+
+    // Initial Update Check
+    ClipboardPush::CheckForUpdates();
 
     // Setup Clipboard Monitor
     ClipboardPush::Platform::ClipboardMonitor::Instance().SetCallback([]() {

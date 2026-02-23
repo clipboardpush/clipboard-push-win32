@@ -8,15 +8,39 @@
 #include <ws2tcpip.h>
 #include <iphlpapi.h>
 #include <windows.h>
+#include <shellapi.h>
 
 #include <string>
 #include <vector>
 
 #pragma comment(lib, "iphlpapi.lib")
 #pragma comment(lib, "ws2_32.lib")
+#pragma comment(lib, "shell32.lib")
 
 namespace ClipboardPush {
 namespace Utils {
+
+inline std::wstring ToWide(const std::string& str) {
+    if (str.empty()) return std::wstring();
+    int size_needed = MultiByteToWideChar(CP_UTF8, 0, str.c_str(), (int)str.size(), NULL, 0);
+    if (size_needed <= 0) return std::wstring();
+    std::wstring wstrTo(size_needed, 0);
+    MultiByteToWideChar(CP_UTF8, 0, str.c_str(), (int)str.size(), &wstrTo[0], size_needed);
+    return wstrTo;
+}
+
+inline void OpenUrl(const std::string& url) {
+    ShellExecuteW(NULL, L"open", ToWide(url).c_str(), NULL, NULL, SW_SHOWNORMAL);
+}
+
+inline std::string ToUtf8(const std::wstring& wstr) {
+    if (wstr.empty()) return std::string();
+    int size_needed = WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), (int)wstr.size(), NULL, 0, NULL, NULL);
+    if (size_needed <= 0) return std::string();
+    std::string strTo(size_needed, 0);
+    WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), (int)wstr.size(), &strTo[0], size_needed, NULL, NULL);
+    return strTo;
+}
 
 struct NetworkMetadata {
     std::string private_ip = "127.0.0.1";
@@ -74,24 +98,6 @@ inline NetworkMetadata GetNetworkMetadata() {
 
 inline std::string GetLocalIPAddress() {
     return GetNetworkMetadata().private_ip;
-}
-
-inline std::wstring ToWide(const std::string& str) {
-    if (str.empty()) return std::wstring();
-    int size_needed = MultiByteToWideChar(CP_UTF8, 0, str.c_str(), (int)str.size(), NULL, 0);
-    if (size_needed <= 0) return std::wstring();
-    std::wstring wstrTo(size_needed, 0);
-    MultiByteToWideChar(CP_UTF8, 0, str.c_str(), (int)str.size(), &wstrTo[0], size_needed);
-    return wstrTo;
-}
-
-inline std::string ToUtf8(const std::wstring& wstr) {
-    if (wstr.empty()) return std::string();
-    int size_needed = WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), (int)wstr.size(), NULL, 0, NULL, NULL);
-    if (size_needed <= 0) return std::string();
-    std::string strTo(size_needed, 0);
-    WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), (int)wstr.size(), &strTo[0], size_needed, NULL, NULL);
-    return strTo;
 }
 
 inline std::string Trim(const std::string& s) {
