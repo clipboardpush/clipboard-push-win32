@@ -219,9 +219,9 @@ std::string GetCurrentTimestamp() {
     return ss.str();
 }
 
-void PushText(const std::string& text) {
+bool PushText(const std::string& text) {
     auto& config = Config::Instance().Data();
-    if (config.room_key.empty()) return;
+    if (config.room_key.empty()) return false;
 
     auto key = Crypto::DecodeKey(config.room_key);
     std::vector<uint8_t> plain(text.begin(), text.end());
@@ -248,10 +248,12 @@ void PushText(const std::string& text) {
         auto res = Network::HttpClient::Post(url, j.dump());
         if (res.status == 200) {
             LOG_INFO("Push success");
+            return true;
         } else {
             LOG_ERROR("Push failed: %d, Response: %s", res.status, res.body.c_str());
         }
     }
+    return false;
 }
 
 void PushFileData(const std::vector<uint8_t>& data, const std::string& filename, const std::string& fileType) {
@@ -465,8 +467,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
                 LOG_INFO("Manual Tray Push Triggered");
                 auto cb = ClipboardPush::Platform::Clipboard::Get();
                 if (cb.type == ClipboardPush::Platform::ClipboardType::Text && !cb.text.empty()) {
-                    ClipboardPush::PushText(cb.text);
-                    ClipboardPush::UI::TrayIcon::Instance().ShowMessage(L"Clipboard Pushed", L"Text content sent successfully");
+                    if (ClipboardPush::PushText(cb.text)) {
+                        ClipboardPush::UI::TrayIcon::Instance().ShowMessage(L"Clipboard Pushed", L"Text content sent successfully");
+                    } else {
+                        ClipboardPush::UI::TrayIcon::Instance().ShowMessage(L"Push Failed", L"Failed to send text content");
+                    }
                 } else if (cb.type == ClipboardPush::Platform::ClipboardType::Image) {
                     ClipboardPush::PushImage(cb.image_data);
                     ClipboardPush::UI::TrayIcon::Instance().ShowMessage(L"Clipboard Pushed", L"Image content sent successfully");
@@ -766,25 +771,36 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
         if (g_isProcessingRemoteSync || g_activePeerCount <= 0) return;
         
         auto& config = Config::Instance().Data();
-        if (!config.auto_push_text && !config.auto_push_image && !config.auto_push_file) return;
+        bool textEnabled = config.auto_push_text;
+        bool imgEnabled = config.auto_push_image;
+        bool fileEnabled = config.auto_push_file;
+
+        if (!textEnabled && !imgEnabled && !fileEnabled) return;
 
         // Skip if no peers to receive (avoid wasted crypto/upload)
         // We'll use a simple check: if MainWindow says we're waiting for peers
         // Actually, let's keep it simple: if the push button would be disabled, skip.
         // This is safe because SetCallback runs on main thread or we can check peer count.
         
-        LOG_INFO("Local clipboard changed, checking for auto-push...");
+        LOG_INFO("Local clipboard changed. Auto-Push Config: Text=%d, Img=%d, File=%d", textEnabled, imgEnabled, fileEnabled);
         auto cb = ClipboardPush::Platform::Clipboard::Get();
         
-        if (cb.type == ClipboardPush::Platform::ClipboardType::Text && config.auto_push_text && !cb.text.empty()) {
-            LOG_INFO("Auto-pushing text...");
-            ClipboardPush::PushText(cb.text);
-            ClipboardPush::ShowNotification(L"Auto Pushed", L"Text content sent automatically", ClipboardPush::UI::NotificationStyle::Outbound);
-        } else if (cb.type == ClipboardPush::Platform::ClipboardType::Image && config.auto_push_image) {
+        if (cb.type == ClipboardPush::Platform::ClipboardType::Text) {
+            if (textEnabled && !cb.text.empty()) {
+                LOG_INFO("Auto-pushing text...");
+                if (ClipboardPush::PushText(cb.text)) {
+                    ClipboardPush::ShowNotification(L"Auto Pushed", L"Text content sent automatically", ClipboardPush::UI::NotificationStyle::Outbound);
+                } else {
+                    LOG_ERROR("Auto-push failed (network error or empty key)");
+                }
+            } else {
+                LOG_INFO("Clipboard text ignored (Auto-Push Disabled or Empty)");
+            }
+        } else if (cb.type == ClipboardPush::Platform::ClipboardType::Image && imgEnabled) {
             LOG_INFO("Auto-pushing image...");
             ClipboardPush::PushImage(cb.image_data);
             ClipboardPush::ShowNotification(L"Auto Pushed", L"Image content sent automatically", ClipboardPush::UI::NotificationStyle::Outbound);
-        } else if (cb.type == ClipboardPush::Platform::ClipboardType::Files && config.auto_push_file) {
+        } else if (cb.type == ClipboardPush::Platform::ClipboardType::Files && fileEnabled) {
             LOG_INFO("Auto-pushing %zu file(s)...", cb.files.size());
             for (const auto& file : cb.files) {
                 ClipboardPush::PushPhysicalFile(file);
@@ -804,8 +820,11 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
         LOG_INFO("Hotkey Triggered!");
         auto cb = ClipboardPush::Platform::Clipboard::Get();
         if (cb.type == ClipboardPush::Platform::ClipboardType::Text && !cb.text.empty()) {
-            ClipboardPush::PushText(cb.text);
-            ClipboardPush::ShowNotification(L"Clipboard Pushed", L"Text content sent", ClipboardPush::UI::NotificationStyle::Outbound);
+            if (ClipboardPush::PushText(cb.text)) {
+                ClipboardPush::ShowNotification(L"Clipboard Pushed", L"Text content sent", ClipboardPush::UI::NotificationStyle::Outbound);
+            } else {
+                ClipboardPush::ShowNotification(L"Push Failed", L"Failed to send text content.", UI::NotificationStyle::Inbound);
+            }
         } else if (cb.type == ClipboardPush::Platform::ClipboardType::Image) {
             ClipboardPush::PushImage(cb.image_data);
             ClipboardPush::ShowNotification(L"Clipboard Pushed", L"Image content sent", ClipboardPush::UI::NotificationStyle::Outbound);

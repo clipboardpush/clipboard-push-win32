@@ -128,9 +128,12 @@ INT_PTR CALLBACK MainWindow::DialogProc(HWND hDlg, UINT message, WPARAM wParam, 
                     std::wstring wText(len + 1, 0);
                     GetWindowTextW(hEdit, &wText[0], len + 1);
                     wText.resize(len);
-                    ClipboardPush::PushText(Utils::ToUtf8(wText));
-                    SetDlgItemTextW(hDlg, IDC_MAIN_TEXT, L""); // Clear the box
-                    MainWindow::Instance().SetStatus(L"Pushed Successfully");
+                    if (ClipboardPush::PushText(Utils::ToUtf8(wText))) {
+                        SetDlgItemTextW(hDlg, IDC_MAIN_TEXT, L""); // Clear the box
+                        MainWindow::Instance().SetStatus(L"Pushed Successfully");
+                    } else {
+                        MainWindow::Instance().SetStatus(L"Push Failed (Check Log)");
+                    }
                 }
             }
             return (INT_PTR)TRUE;

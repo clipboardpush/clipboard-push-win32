@@ -88,7 +88,7 @@ BEGIN
     PUSHBUTTON      "Reconnect", IDC_SETTINGS_RECONNECT, 270, 242, 65, 14
     PUSHBUTTON      "Reset Credentials", IDC_SETTINGS_RESET, 340, 242, 73, 14
     
-    LTEXT           "Version 4.6.1 Stable", IDC_STATIC, 345, 265, 70, 8, SS_RIGHT | WS_DISABLED
+    LTEXT           "Version ...", IDC_SETTINGS_VERSION, 200, 265, 215, 8, SS_RIGHT | WS_DISABLED
 END
 
 // Version Information

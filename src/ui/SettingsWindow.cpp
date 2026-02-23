@@ -4,6 +4,7 @@
 #include "core/Utils.h"
 #include "core/Logger.h"
 #include "core/LocalServer.h"
+#include "core/Version.h"
 #include "qrcodegen.hpp"
 #include <shlobj.h>
 #include <commctrl.h>
@@ -115,6 +116,10 @@ void SettingsWindow::LoadSettings() {
     CheckDlgButton(m_hWnd, IDC_SETTINGS_STARTUP, data.auto_start ? BST_CHECKED : BST_UNCHECKED);
     CheckDlgButton(m_hWnd, IDC_SETTINGS_MINIMIZED, data.start_minimized ? BST_CHECKED : BST_UNCHECKED);
     CheckDlgButton(m_hWnd, IDC_SETTINGS_NOTIFICATIONS, data.show_notifications ? BST_CHECKED : BST_UNCHECKED);
+
+    // Set Version Text
+    std::string ver = "Version " APP_VERSION_STRING " Stable";
+    SetDlgItemTextW(m_hWnd, IDC_SETTINGS_VERSION, Utils::ToWide(ver).c_str());
 
     // Update QR - using the requested JSON format
     nlohmann::json j;
