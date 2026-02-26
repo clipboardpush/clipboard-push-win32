@@ -135,11 +135,22 @@ void SocketIOService::StartWatchdog() {
 
             uint64_t now = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
             
-            // If connected but no activity for 45 seconds, force reconnect
+            // If connected but no activity for 45 seconds, force reconnect.
+            // NOTE: We cannot rely on the close callback to fire here — when the network
+            // drops (e.g. laptop lid closed), WinHttpWebSocketReceive blocks indefinitely
+            // and never returns an error, so onClose/onError are never invoked.
+            // Instead, drive the reconnect directly from the watchdog.
             bool isConnected = (m_status == ConnectionStatus::ConnectedLonely || m_status == ConnectionStatus::ConnectedSynced);
             if (isConnected && (now - m_lastActivityTime > 45)) {
-                LOG_INFO("Watchdog: Connection is silent for too long. Forcing reconnect.");
-                m_ws.Close(); // This will trigger Disconnect callback and ScheduleReconnect
+                LOG_INFO("Watchdog: Connection silent for >45s. Forcing reconnect.");
+                // Close the socket first — this closes the underlying WinHTTP handle,
+                // which unblocks the receive thread (it will return ERROR_INVALID_HANDLE
+                // and exit cleanly since running==false).
+                m_ws.Close();
+                // Directly update state and schedule reconnect rather than waiting for
+                // a close callback that may never arrive on a dead network link.
+                SetStatus(ConnectionStatus::Disconnected);
+                ScheduleReconnect();
             }
         }
         m_watchdogRunning = false;

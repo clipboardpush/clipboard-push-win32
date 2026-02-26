@@ -550,6 +550,17 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
     ClipboardPush::Platform::ClipboardMonitor::Instance().HandleMessage(message, wParam, lParam);
 
     switch (message) {
+    case WM_POWERBROADCAST:
+        // System resumed from sleep/hibernate (e.g. laptop lid opened).
+        // The TCP connection was silently dropped while suspended — force an
+        // immediate reconnect rather than waiting up to 45 s for the watchdog.
+        if (wParam == PBT_APMRESUMEAUTOMATIC || wParam == PBT_APMRESUMESUSPEND) {
+            LOG_INFO("System resumed from sleep. Forcing reconnect.");
+            auto& d = ClipboardPush::Config::Instance().Data();
+            ClipboardPush::SocketIOService::Instance().Disconnect();
+            ClipboardPush::SocketIOService::Instance().Connect(d.relay_server_url, d.room_id, d.device_id);
+        }
+        return 0;
     case WM_SHOW_NOTIFICATION:
         ClipboardPush::UI::NotificationWindow::HandleMessage(lParam);
         break;
