@@ -63,6 +63,12 @@ void LocalServer::Run() {
         if (req.form.has_file("file")) {
             auto file = req.form.get_file("file");
             std::string filename = file.filename;
+            // Reject filenames with path traversal sequences or directory separators
+            if (filename.empty() || filename.find("..") != std::string::npos ||
+                filename.find('/') != std::string::npos || filename.find('\\') != std::string::npos) {
+                res.status = 400;
+                return;
+            }
             fs::path downloadDir(Utils::ToWide(config.download_path));
             if (!fs::exists(downloadDir)) fs::create_directories(downloadDir);
 
@@ -105,6 +111,12 @@ void LocalServer::Run() {
         }
 
         std::string filename = req.matches[1];
+        // Reject path traversal sequences and directory separators — serve flat filenames only
+        if (filename.empty() || filename.find("..") != std::string::npos ||
+            filename.find('/') != std::string::npos || filename.find('\\') != std::string::npos) {
+            res.status = 400;
+            return;
+        }
         fs::path downloadDir(Utils::ToWide(config.download_path));
         fs::path tempDir = fs::path(Utils::GetAppDir()) / L"temp";
         

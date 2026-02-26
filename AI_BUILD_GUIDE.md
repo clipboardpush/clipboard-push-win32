@@ -1,52 +1,69 @@
-# Clipboard Push Win32: AI 编译与环境指南
+# Clipboard Push Win32: AI Build Guide
 
-**致后续处理此项目的 AI 助手：**
-本项目是一个追求极致兼容性（Win10/11）和轻量化（<1MB）的原生 C++ 项目。由于当前开发机器环境特殊（同时存在 MinGW 和 MSVC），请务必严格遵守以下编译准则，否则会导致链接错误或运行闪退。
-
----
-
-## 🛠️ 1. 核心编译环境 (关键路径)
-
-在执行任何编译指令前，请先确认并使用以下路径：
-- **MSVC 工具链初始化**：`C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat`
-- **VCPKG 根目录**：`D:\vcpkg`
-- **CMake 工具链文件**：`D:\vcpkg\scripts\buildsystems\vcpkg.cmake`
+**For AI assistants working on this project:**
+This is a native C++ project targeting maximum compatibility (Win10/11) and minimal size (<1 MB). The build environment has strict requirements. Follow these rules exactly to avoid linker errors or runtime crashes.
 
 ---
 
-## 🚀 2. 终极原子编译指令 (必用模板)
+## 1. Core Build Environment
 
-由于系统环境变量中存在 MinGW，普通 `cmake ..` 会错误调用 GCC 导致崩溃。**必须**在同一个 Shell 会话中初始化 MSVC 环境并强制指定 vcpkg 静态三元组。
+Before running any build command, confirm the following tools are available:
 
-**请直接复制并执行此指令进行构建：**
+- **MSVC toolchain** — Visual Studio 2022 Build Tools (or full VS 2022), `cl.exe` must be on PATH.
+  Initialize with: `vcvars64.bat` from your VS installation.
+  Typical location: `C:\Program Files\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat`
+  (Adjust path to match the actual VS install on this machine.)
+- **vcpkg root** — Set `VCPKG_ROOT` environment variable to the vcpkg installation directory.
+- **CMake toolchain file** — `%VCPKG_ROOT%\scripts\buildsystems\vcpkg.cmake`
+- **Ninja** — Recommended generator; falls back to MSBuild if unavailable.
+
+---
+
+## 2. The Canonical Build Command
+
+Because MinGW/GCC may be on PATH and would produce incorrect binaries, you **must** initialize the MSVC environment and force the static vcpkg triplet in the same shell session.
+
 ```powershell
-cmd /c "call "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat" && cd /d [项目所在绝对路径]\win32-client && rd /s /q build & mkdir build & cd build & cmake -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=D:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static -DCMAKE_BUILD_TYPE=Release .. && cmake --build ."
+# Replace <VS_VCVARS64> with the actual path to vcvars64.bat on this machine
+# Replace <PROJECT_DIR> with the absolute path to this repository
+
+cmd /c "call \"<VS_VCVARS64>\" && cd /d <PROJECT_DIR> && rd /s /q build & mkdir build & cd build & cmake -G \"Ninja\" -DCMAKE_TOOLCHAIN_FILE=%VCPKG_ROOT%/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static -DCMAKE_BUILD_TYPE=Release .. && cmake --build ."
 ```
 
 ---
 
-## ⚠️ 3. 必须遵守的四大禁令
+## 3. Four Non-Negotiable Rules
 
-1.  **禁动静态链接配置**：
-    - 必须使用 `-DVCPKG_TARGET_TRIPLET=x64-windows-static`。
-    - `CMakeLists.txt` 中必须保留 `/MT` (Static CRT) 选项。这是为了确保在没有安装 VC++ 运行库的 Win10 上不闪退。
-2.  **严禁混用编译器**：
-    - 看到 `D:\mingw64` 的报错时，绝对不要尝试去兼容它。必须通过 `vcvars64.bat` 强行切换回 **cl.exe (MSVC)**。
-3.  **保持静默 GUI 模式**：
-    - 入口函数必须是 `APIENTRY wWinMain`。
-    - `add_executable` 必须带 `WIN32` 标志。严禁改回 `main()`，否则会导致程序运行时自带一个黑色的命令行窗口。
-4.  **LOG_RAW 宏保护**：
-    - 处理 Socket.IO 的 JSON 消息时，必须使用 `LOG_RAW` 宏而非 `LOG_DEBUG`。因为 JSON 中的 `%` 符号会触发格式化字符串漏洞导致程序瞬间崩溃。
+1. **Never change the static-linking configuration.**
+   - Always use `-DVCPKG_TARGET_TRIPLET=x64-windows-static`.
+   - `CMakeLists.txt` must retain `/MT` (Static CRT). This prevents crashes on machines without the VC++ Redistributable.
+
+2. **Never mix compilers.**
+   - If you see errors referencing a MinGW path, do not try to accommodate it. Re-initialize MSVC via `vcvars64.bat` and force `cl.exe`.
+
+3. **Keep GUI mode (no console window).**
+   - The entry point must be `APIENTRY wWinMain`.
+   - `add_executable` must include the `WIN32` flag.
+   - Never change back to `main()` — doing so causes a black console window to appear at runtime.
+
+4. **Be careful with format strings in log calls.**
+   - `LOG_DEBUG` / `LOG_INFO` / `LOG_ERROR` use `printf`-style formatting.
+   - Never pass a raw user-supplied string or JSON payload directly as the format argument.
+   - Always use `LOG_INFO("msg: %s", someString.c_str())` — never `LOG_INFO(someString.c_str())`.
+   - This is especially important when logging Socket.IO JSON messages, which may contain `%` characters that would be interpreted as format specifiers and crash the process.
 
 ---
 
-## 🔄 4. 常见问题排查
+## 4. Troubleshooting
 
-- **编译成功但运行闪退**：检查是否误改为了动态链接 (`/MD`)。请检查生成的 `.exe` 大小，正常全静态版应在 **940KB - 960KB** 之间。
-- **找不到头文件**：确保 CMake 命令行中带入了正确的 `CMAKE_TOOLCHAIN_FILE` 路径。
-- **找不到 Ninja**：如果系统没有 Ninja，可以尝试删除 `-G "Ninja"` 让 CMake 使用默认生成器，但仍需保留 `vcvars64.bat` 环境。
+| Symptom | Likely Cause | Fix |
+|---------|-------------|-----|
+| Compiled successfully, crashes on startup | Dynamic CRT (`/MD`) used instead of static | Check `.exe` size — correct fully static build is **940–960 KB** |
+| "Cannot find header" errors | Wrong `CMAKE_TOOLCHAIN_FILE` path | Verify `VCPKG_ROOT` and re-run CMake |
+| Ninja not found | Ninja not installed | Remove `-G "Ninja"` to use the default MSBuild generator (still requires `vcvars64.bat`) |
+| MinGW path appears in error output | GCC picked up from PATH | Re-run `vcvars64.bat` in a fresh shell before CMake |
 
 ---
 
-**当前版本：v4.7.0 Stable**
-**核心状态：Peer 感知已上线，Protocol 4.0 已打通。**
+**Current version: v4.7.0 Stable**
+**Protocol: 4.0 — Peer-aware, LAN direct transfer + cloud relay fallback.**
