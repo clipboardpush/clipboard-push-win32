@@ -1,9 +1,9 @@
 {
-    "changelog":  "Auto-build update. (Build 109)",
-    "build":  109,
+    "changelog":  "Auto-build update. (Build 110)",
+    "build":  110,
     "version_major":  4,
     "version_minor":  7,
-    "version_string":  "v4.7.0",
-    "version_patch":  0,
+    "version_string":  "v4.7.1",
+    "version_patch":  1,
     "download_url":  "https://clipboardpush.com/downloads/ClipboardPushWin32.exe"
 }
