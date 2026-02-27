@@ -2,6 +2,7 @@
 
 A lightweight, dependency-free native Windows client for the **Clipboard Push** clipboard sync system. Sync text, images, and files between your PC and Android phone over Wi-Fi or through a relay server — with end-to-end AES-256-GCM encryption.
 
+> **Website:** [clipboardpush.com](https://clipboardpush.com)
 > **Android app:** [clipboard-push-android](https://github.com/clipboardpush/clipboard-push-android)
 > **Relay server:** [clipboard-push-server](https://github.com/clipboardpush/clipboard-push-server)
 
@@ -103,7 +104,7 @@ This client requires a running instance of the [Clipboard Push Relay Server](htt
 2. In the Windows client, open Settings and update **Server URL** to point to your instance.
 3. Re-scan the QR code on Android.
 
-A public server is available for testing at `clipboardpush.com`, but it provides no uptime guarantees for production use.
+A public server is available for testing at [clipboardpush.com](https://clipboardpush.com), but it provides no uptime guarantees for production use.
 
 ---
 
