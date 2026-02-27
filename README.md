@@ -1,8 +1,7 @@
 # Clipboard Push — Windows Client
 
-A lightweight, dependency-free native Windows client for the **Clipboard Push** clipboard sync system. Sync text, images, and files between your PC and Android phone over Wi-Fi or through a relay server — with end-to-end AES-256-GCM encryption.
+A lightweight, dependency-free native Windows client for **[Clipboard Push](https://clipboardpush.com)** — push clipboard text, images, and files between your PC and Android phone over Wi-Fi or through a relay server, with end-to-end AES-256-GCM encryption.
 
-> **Website:** [clipboardpush.com](https://clipboardpush.com)
 > **Android app:** [clipboard-push-android](https://github.com/clipboardpush/clipboard-push-android)
 > **Relay server:** [clipboard-push-server](https://github.com/clipboardpush/clipboard-push-server)
 
