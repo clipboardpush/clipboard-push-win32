@@ -1,6 +1,6 @@
 # Clipboard Push — Windows Client
 
-A lightweight, dependency-free native Windows client for **[Clipboard Push](https://clipboardpush.com)** — push clipboard text, images, and files between your PC and Android phone over Wi-Fi or through a relay server, with end-to-end AES-256-GCM encryption.
+A lightweight, dependency-free native Windows client for **[Clipboard Push](https://clipboardpush.com)** — push clipboard text, images, and files between your PC and mobile device over Wi-Fi or through a relay server, with end-to-end AES-256-GCM encryption.
 
 > **Android app:** [clipboard-push-android](https://github.com/clipboardpush/clipboard-push-android)
 > **Relay server:** [clipboard-push-server](https://github.com/clipboardpush/clipboard-push-server)
@@ -120,8 +120,8 @@ The application checks for updates at startup by fetching a version JSON from th
 - If you build from source or deploy internally, you should **disable or modify** `CheckForUpdates()` in `main.cpp` and `PerformAutoUpdate()` to prevent unintended updates.
 - The update URL is defined in `version-win32.json` and the `scripts/update_build.ps1` helper.
 
-### Cloud File Relay (R2)
-When a direct LAN transfer is not possible, files are uploaded to cloud storage (Cloudflare R2) as a fallback. Files are always encrypted before upload (AES-256-GCM). The relay server automatically purges **all R2 objects every 60 minutes**, so files are never stored beyond the transfer window. Self-hosters can disable R2 entirely to keep all transfers local.
+### Cloud File Relay
+When a direct LAN transfer is not possible, files are uploaded to the relay server's configured storage backend (Cloudflare R2 or local disk) as a fallback. Files are always encrypted before upload (AES-256-GCM). The relay server automatically purges **all stored files every 60 minutes**, so files are never stored beyond the transfer window.
 
 ### LAN File Server
 The built-in HTTP server (used for direct LAN file transfer) is protected by a shared `X-Room-ID` header. Only peers that know the `room_id` can access it. Run this only on trusted local networks.
