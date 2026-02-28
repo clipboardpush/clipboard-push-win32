@@ -120,6 +120,9 @@ The application checks for updates at startup by fetching a version JSON from th
 - If you build from source or deploy internally, you should **disable or modify** `CheckForUpdates()` in `main.cpp` and `PerformAutoUpdate()` to prevent unintended updates.
 - The update URL is defined in `version-win32.json` and the `scripts/update_build.ps1` helper.
 
+### Cloud File Relay (R2)
+When a direct LAN transfer is not possible, files are uploaded to cloud storage (Cloudflare R2) as a fallback. Files are always encrypted before upload (AES-256-GCM). The relay server automatically purges **all R2 objects every 60 minutes**, so files are never stored beyond the transfer window. Self-hosters can disable R2 entirely to keep all transfers local.
+
 ### LAN File Server
 The built-in HTTP server (used for direct LAN file transfer) is protected by a shared `X-Room-ID` header. Only peers that know the `room_id` can access it. Run this only on trusted local networks.
 
