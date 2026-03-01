@@ -1,5 +1,10 @@
 # Clipboard Push — Windows Client
 
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Windows](https://img.shields.io/badge/Windows-10%2F11-0078D4.svg)](https://www.microsoft.com/windows)
+[![C++17](https://img.shields.io/badge/C%2B%2B-17-00599C.svg)](https://en.cppreference.com)
+[![Platform](https://img.shields.io/badge/platform-x64-lightgrey.svg)]()
+
 A lightweight, dependency-free native Windows client for **[Clipboard Push](https://clipboardpush.com)** — push clipboard text, images, and files between your PC and mobile device over Wi-Fi or through a relay server, with end-to-end AES-256-GCM encryption.
 
 > **Android app:** [clipboard-push-android](https://github.com/clipboardpush/clipboard-push-android)
