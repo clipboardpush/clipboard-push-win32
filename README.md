@@ -7,8 +7,8 @@
 
 A lightweight, dependency-free native Windows client for **[Clipboard Push](https://clipboardpush.com)** — push clipboard text, images, and files between your PC and mobile device over Wi-Fi or through a relay server, with end-to-end AES-256-GCM encryption.
 
-> **Android app:** [clipboard-push-android](https://github.com/clipboardpush/clipboard-push-android)
-> **Relay server:** [clipboard-push-server](https://github.com/clipboardpush/clipboard-push-server)
+> **Android app:** [clipboard-push-android](https://github.com/yelosheng/clipboard-push-android)
+> **Relay server:** [clipboard-push-server](https://github.com/yelosheng/clipboard-push-server)
 
 ---
 
@@ -50,7 +50,7 @@ The app connects to the relay server specified in Settings. Point it at your own
 
 ```powershell
 # 1. Clone
-git clone https://github.com/clipboardpush/clipboard-push-win32.git
+git clone https://github.com/yelosheng/clipboard-push-win32.git
 cd clipboard-push-win32
 
 # 2. Install vcpkg dependencies (static triplet is required)
@@ -102,7 +102,7 @@ Settings are saved to `config.json` next to the `.exe`. Most options are availab
 
 ## Self-Hosting
 
-This client requires a running instance of the [Clipboard Push Relay Server](https://github.com/clipboardpush/clipboard-push-server).
+This client requires a running instance of the [Clipboard Push Relay Server](https://github.com/yelosheng/clipboard-push-server).
 
 1. Deploy your own relay server following its README.
 2. In the Windows client, open Settings and update **Server URL** to point to your instance.
