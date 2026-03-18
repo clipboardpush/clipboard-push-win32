@@ -1,6 +1,6 @@
 {
-    "changelog":  "Auto-migrate placeholder server URL on startup. (Build 1.1.4)",
-    "build":  114,
+    "changelog":  "Fix large text clipboard sync (>4KB) being silently dropped due to WebSocket fragment buffer overflow. (Build 1.1.5)",
+    "build":  115,
     "version_major":  4,
     "version_minor":  7,
     "version_patch":  1,

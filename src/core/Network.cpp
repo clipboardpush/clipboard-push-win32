@@ -231,12 +231,13 @@ void WebSocketClient::Connect(const std::string& url) {
     }
 
     m_impl->receiveThread = std::thread([this]() {
-        BYTE buffer[4096];
+        std::vector<BYTE> buffer(65536);
+        std::string accumulator;
         DWORD bytesRead = 0;
         WINHTTP_WEB_SOCKET_BUFFER_TYPE bufferType;
-        
+
         while (m_impl->running) {
-            DWORD error = WinHttpWebSocketReceive(m_impl->hWebSocket, buffer, sizeof(buffer), &bytesRead, &bufferType);
+            DWORD error = WinHttpWebSocketReceive(m_impl->hWebSocket, buffer.data(), (DWORD)buffer.size(), &bytesRead, &bufferType);
             if (error != ERROR_SUCCESS) {
                 if (m_impl->running) {
                     m_impl->running = false;
@@ -244,20 +245,23 @@ void WebSocketClient::Connect(const std::string& url) {
                 }
                 break;
             }
-            
+
             if (bufferType == WINHTTP_WEB_SOCKET_CLOSE_BUFFER_TYPE) {
                 m_impl->running = false;
                 if (m_impl->onClose) m_impl->onClose();
                 break;
             }
-            
-            if (bufferType == WINHTTP_WEB_SOCKET_UTF8_MESSAGE_BUFFER_TYPE || bufferType == WINHTTP_WEB_SOCKET_UTF8_FRAGMENT_BUFFER_TYPE) {
-                if (m_impl->onMessage) {
-                    std::string msg((char*)buffer, bytesRead);
-                    m_impl->onMessage(msg);
-                }
+
+            if (bufferType == WINHTTP_WEB_SOCKET_UTF8_FRAGMENT_BUFFER_TYPE) {
+                // Intermediate fragment — accumulate and wait for the final piece
+                accumulator.append((char*)buffer.data(), bytesRead);
+            } else if (bufferType == WINHTTP_WEB_SOCKET_UTF8_MESSAGE_BUFFER_TYPE) {
+                // Complete message or final fragment — deliver to handler
+                accumulator.append((char*)buffer.data(), bytesRead);
+                if (m_impl->onMessage) m_impl->onMessage(accumulator);
+                accumulator.clear();
             }
-            
+
             // Yield to allow other threads (like Send) to run smoothly in Release mode
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
