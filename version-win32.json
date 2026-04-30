@@ -1,6 +1,6 @@
 {
-    "changelog":  "Fix large text clipboard sync (>4KB) being silently dropped due to WebSocket fragment buffer overflow. (Build 1.1.5)",
-    "build":  115,
+    "changelog":  "Fix lan_timeout from config.json not being applied; LAN fallback timeout now respects the configured value. (Build 1.1.6)",
+    "build":  116,
     "version_major":  4,
     "version_minor":  7,
     "version_patch":  1,

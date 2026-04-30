@@ -97,8 +97,8 @@ END
 
 // Version Information
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 4,5,1,0
- PRODUCTVERSION 4,5,1,0
+ FILEVERSION 4,7,1,0
+ PRODUCTVERSION 4,7,1,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -115,12 +115,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "Clipboard Push Project"
             VALUE "FileDescription", "Real-time Cross-Platform Clipboard Sync"
-            VALUE "FileVersion", "4.5.1.0"
+            VALUE "FileVersion", "4.7.1.0"
             VALUE "InternalName", "ClipboardPushWin32.exe"
             VALUE "LegalCopyright", "Copyright (C) 2026"
             VALUE "OriginalFilename", "ClipboardPushWin32.exe"
             VALUE "ProductName", "Clipboard Push"
-            VALUE "ProductVersion", "4.5.1.0"
+            VALUE "ProductVersion", "4.7.1.0"
         END
     END
     BLOCK "VarFileInfo"

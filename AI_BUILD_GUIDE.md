@@ -52,10 +52,109 @@ cmake --build .
 - vcvars64.bat: `C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat`
 - VCPKG_ROOT: `D:\vcpkg`
 - Ninja: `D:\mingw64\bin\ninja.exe`
+- Inno Setup compiler: `C:\Program Files (x86)\Inno Setup 6\ISCC.exe`
 
 ---
 
-## 3. Four Non-Negotiable Rules
+## 3. Release Version Checklist
+
+Before building a release for website deployment, update all version surfaces together:
+
+1. `src/core/Version.h`
+   - `APP_VERSION_MAJOR`, `APP_VERSION_MINOR`, `APP_VERSION_PATCH` are used by auto-update comparison.
+   - `APP_BUILD_NUMBER` is also used by auto-update comparison. Increment it for every deployable build, even if the semantic version stays the same.
+   - `APP_BUILD_MAJOR`, `APP_BUILD_MINOR`, `APP_BUILD_PATCH` are shown in the Settings window via `APP_VERSION_STRING`.
+
+2. `version-win32.json`
+   - Must match `Version.h` values.
+   - `build` must be greater than the currently deployed build, otherwise existing clients will not auto-update.
+   - Keep `download_url` pointing to the deployed `ClipboardPushWin32.exe`.
+   - Use a specific `changelog`; avoid generic "Auto-build update" text for user-facing releases.
+
+3. `src/ClipboardPush.rc`
+   - Update `FILEVERSION`, `PRODUCTVERSION`, `FileVersion`, and `ProductVersion`.
+   - This controls the Windows file properties for `ClipboardPushWin32.exe`.
+
+4. `scripts/installer.iss`
+   - Update `#define AppVersion` if the semantic version changes.
+   - The setup package version comes from this value, while the installed app version comes from the embedded exe.
+
+5. `src/ui/SettingsWindow.cpp`
+   - The Settings page version text uses `APP_VERSION_STRING`.
+   - If `Version.h` changes, make sure `SettingsWindow.cpp` is rebuilt; stale object files can leave the Settings window showing the old version.
+   - Do not append another `Stable` when using `APP_VERSION_STRING`, because the macro already includes the suffix.
+
+---
+
+## 4. One-Pass Release Build
+
+Run the normal app build first:
+
+```bash
+powershell -NoProfile -Command "cmd /c 'D:\APPs\z_pan_python\clipboard_push_win32-client\build_release.bat'"
+```
+
+After `build\ClipboardPushWin32.exe` is current, build the installer:
+
+```powershell
+& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" scripts\installer.iss
+```
+
+Installer output:
+
+```text
+build\ClipboardPushWin32-Setup.exe
+```
+
+Website deployment artifacts:
+
+- `build\ClipboardPushWin32.exe`
+- `build\ClipboardPushWin32-Setup.exe`
+- `version-win32.json`
+
+If Ninja/CMake hangs in this environment while only specific objects are dirty, rebuild the affected object files with the MSVC command printed by:
+
+```bat
+D:\mingw64\bin\ninja.exe -C D:\APPs\z_pan_python\clipboard_push_win32-client\build -t commands <target-or-object>
+```
+
+Then run the linker command printed by:
+
+```bat
+D:\mingw64\bin\ninja.exe -C D:\APPs\z_pan_python\clipboard_push_win32-client\build -t commands ClipboardPushWin32.exe
+```
+
+---
+
+## 5. Required Release Verification
+
+Run these checks before saying the release is ready:
+
+```powershell
+Get-Item build/ClipboardPushWin32.exe,build/ClipboardPushWin32-Setup.exe |
+  Select-Object Name,Length,LastWriteTime,
+    @{Name='FileVersion';Expression={$_.VersionInfo.FileVersion}},
+    @{Name='ProductVersion';Expression={$_.VersionInfo.ProductVersion}}
+```
+
+Confirm:
+
+- `ClipboardPushWin32.exe` `FileVersion` and `ProductVersion` match `src/ClipboardPush.rc`.
+- `ClipboardPushWin32-Setup.exe` `ProductVersion` matches `scripts/installer.iss`.
+- `version-win32.json` `build` is greater than the previous deployed build.
+- The exe contains the current Settings page build string:
+
+```powershell
+$bytes=[System.IO.File]::ReadAllBytes('build/ClipboardPushWin32.exe')
+$text=[System.Text.Encoding]::ASCII.GetString($bytes)
+$text.Contains('v4.7.1 (Build 1.1.6) Stable')
+```
+
+Adjust the expected string for the current release. Also check that the old build string is not present.
+
+---
+
+## 6. Four Non-Negotiable Rules
 
 1. **Never change the static-linking configuration.**
    - Always use `-DVCPKG_TARGET_TRIPLET=x64-windows-static`.
@@ -77,7 +176,7 @@ cmake --build .
 
 ---
 
-## 4. Troubleshooting
+## 7. Troubleshooting
 
 | Symptom | Likely Cause | Fix |
 |---------|-------------|-----|
@@ -85,8 +184,10 @@ cmake --build .
 | "Cannot find header" errors | Wrong `CMAKE_TOOLCHAIN_FILE` path | Verify `VCPKG_ROOT` and re-run CMake |
 | Ninja not found | Ninja not installed | Remove `-G "Ninja"` to use the default MSBuild generator (still requires `vcvars64.bat`) |
 | MinGW path appears in error output | GCC picked up from PATH | Re-run `vcvars64.bat` in a fresh shell before CMake |
+| Settings window shows an old version | `SettingsWindow.cpp.obj` was not rebuilt after `Version.h` changed | Rebuild `src/ui/SettingsWindow.cpp`, relink `ClipboardPushWin32.exe`, then rebuild the installer |
+| Auto-update does not trigger after deploying a fixed exe | `version-win32.json` build number was not increased | Increment `APP_BUILD_NUMBER` and `version-win32.json` `build`, then rebuild and redeploy all artifacts |
 
 ---
 
-**Current version: v4.7.0 Stable**
+**Current version: v4.7.1 (Build 1.1.6) Stable**
 **Protocol: 4.0 — Peer-aware, LAN direct transfer + cloud relay fallback.**

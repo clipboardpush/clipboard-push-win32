@@ -136,7 +136,7 @@ void SettingsWindow::LoadSettings() {
 
     // Set Version Text
     if (m_newVersion.empty()) {
-        std::string ver = "Version " APP_VERSION_STRING " Stable";
+        std::string ver = "Version " APP_VERSION_STRING;
         SetDlgItemTextW(m_hWnd, IDC_SETTINGS_VERSION, Utils::ToWide(ver).c_str());
         ShowWindow(GetDlgItem(m_hWnd, IDC_SETTINGS_UPDATE_BTN), SW_HIDE);
     } else {

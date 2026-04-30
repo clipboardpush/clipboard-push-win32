@@ -95,6 +95,7 @@ bool Config::Load() {
         m_data.auto_start = j.value("auto_start", m_data.auto_start);
         m_data.start_minimized = j.value("start_minimized", m_data.start_minimized);
         m_data.show_notifications = j.value("show_notifications", true);
+        m_data.lan_timeout = j.value("lan_timeout", m_data.lan_timeout);
         
         // Generate credentials if missing
         if (m_data.room_id.empty() || m_data.room_key.empty()) {
